@@ -21,7 +21,7 @@ Before using this utility, make sure you have the following:
 ## Setup
 
 1. Clone the repository to your local machine.
-2. Rename the `env_example.js` file to `env.js`.
+2. Rename the `envcopy.js` file to `env.js`.
 3. Fill in the credentials and OpenAI API key in the `env.js` file.
 4. Open the `index.html` file in a web browser to use the utility.
 
