@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Open Ai & Rest API</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet"
+    integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+  <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"
+    integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM"
+    crossorigin="anonymous"></script>
+  <link href="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote.min.js"></script>
+  <script src="  https://unpkg.com/showdown/dist/showdown.min.js"></script>
+</head>
+
+<body>
+  <div id="loader"
+    style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(255, 255, 255, 0.5); z-index: 9999;">
+    <svg xmlns="http://www.w3.org/2000/svg"
+      style="margin: auto; background: none; display: block; shape-rendering: auto;" width="200px" height="200px"
+      viewBox="0 0 100 100" preserveAspectRatio="xMidYMid">
+      <circle cx="50" cy="50" fill="none" stroke="#ccc" stroke-width="8" r="35"
+        stroke-dasharray="164.93361431346415 56.97787143782138">
+        <animateTransform attributeName="transform" type="rotate" repeatCount="indefinite" dur="1s"
+          values="0 50 50;360 50 50" keyTimes="0;1"></animateTransform>
+      </circle>
+    </svg>
+  </div>
+
+  <div class="container  py-3 mt-5">
+    <div class="row">
+      <div class="col-md-9">
+
+        <h1>Open AI - WordPress Rest API Integration</h1>
+        <div class="form-group">
+          <label for="postTitle">Title:</label>
+          <input type="text" class="form-control" id="postTitle" name="title" required>
+        </div>
+
+        <div class="form-group">
+          <label for="postDescription">Short Description:</label>
+          <textarea class="form-control" id="postDescription" name="description" required></textarea>
+        </div>
+
+        <!-- <button type="button" id="setThumbnail" class="btn btn-primary">set Thumbnail</button> -->
+
+        <form id="postForm">
+          <div class="form-group">
+            <label for="summernote">Content:</label>
+            <textarea class="form-control" id="summernote" name="content"></textarea>
+          </div>
+
+          <button type="submit" class="btn btn-primary">Submit</button>
+        </form>
+      </div>
+      <div class="col-md-3">
+        <label for="websiteSelect">The Website To Post Blog</label>
+        <select id="websiteSelect" class="form-control">
+          <option value="">Please Select websites</option>
+          <!-- Add more options for other websites if needed -->
+        </select>
+        <label for="is_yoast">Yoast SEO</label>
+        <select name="is_yoast" id="is_yoast" class="form-control">
+          <option value="1">NO</option>
+          <option value="2">YES</option>
+        </select>
+        <label for="post_status">Status</label>
+        <select name="post_status" id="post_status" class="form-control">
+          <option value="draft">Draft</option>
+          <option value="publish">Publish</option>
+        </select>
+
+        <label for="postTitle">Featured Image:</label>
+        <img id="preview" src="#" class="rounded-3 w-100 p-1" alt="Preview Image" style="display: none;">
+        <div class="input-group mb-3">
+          <input type="file" class="form-control" id="postThumbnail" name="postThumbnail" required>
+          <button type="button" id="uploadThumbnail" class="btn btn-primary input-group-text">Upload</button>
+        </div>
+
+        <label for="open_ai_model">Open AI Model</label>
+        <select name="open_ai_model" id="open_ai_model" class="form-control">
+          <option value="draft">Draft</option>
+          <option value="publish">Publish</option>
+        </select>
+        <label for="maxWords">Maximum Words:</label>
+        <div class="input-group mb-3">
+
+          <input type="number" step="64" class="form-control" max="2048" id="maxWords" value="256" name="maxWords" required>
+
+          <button type="button" id="generateButton" class="btn btn-primary input-group-text">Generate</button>
+        </div>
+
+        <div class="mt-5"></div>
+        <label for="">Debugger</label>
+        <input type="hidden" name="password" id="password" value="">
+        <input type="text" name="username" id="username" value="">
+        <input type="text" name="url" id="url" value="">
+        <input type="text" name="featured_id" id="featured_id" value="">
+      </div>
+    </div>
+  </div>
+<script src="env.js"></script>
+  <script>
+    $(document).ready(function () {
+      
+
+      function populateSelectOptions() {
+        var select = $('#websiteSelect');
+        // Clear existing options
+        select.find('option').not(':first').remove();
+        // Add options from credentials object
+        $.each(credentials, function (key, value) {
+          select.append($('<option>', {
+            value: key,
+            text: key.toUpperCase() + ' - ' + value.url
+          }));
+        });
+      }
+
+      populateSelectOptions();
+
+      function readURL(input) {
+        if (input.files && input.files[0]) {
+          var reader = new FileReader();
+
+          reader.onload = function (e) {
+            $('#preview').attr('src', e.target.result);
+            $('#preview').show(); // Display the preview image
+          }
+
+          reader.readAsDataURL(input.files[0]); // Read the image file as a data URL
+        }
+      }
+
+      // Event listener for file input change
+      $('#postThumbnail').change(function () {
+        readURL(this);
+      });
+      // Update credentials and website URL display when the website selection changes
+      $('#websiteSelect').change(function () {
+        var selectedWebsite = $(this).val();
+        // Update credentials based on the selected website
+        updateCredentials(selectedWebsite);
+        // Call updateCredentials to ensure credentials are updated on change
+      });
+      // Function to show loader animation
+      function showLoader() {
+        $('#loader').show();
+      }
+
+      // Function to hide loader animation
+      function hideLoader() {
+        $('#loader').hide();
+      }
+
+      var converter = new showdown.Converter(),
+        text = '# hello, markdown!',
+        html = converter.makeHtml(text);
+      // alert(html);
+      $('#generateButton').click(function () {
+        validateAndGenerate();
+      });
+
+      // Get the file from the input field
+
+      $('#uploadThumbnail').click(function () {
+        uploadThumbnail();
+      });
+
+      function uploadThumbnail() {
+        var file = $('#postThumbnail')[0].files[0];
+        if (!file) {
+          alert('Please select a thumbnail to upload!');
+          return;
+        }
+
+        var username = $('#username').val();
+        var password = $('#password').val();
+        var url = $('#url').val();
+        if (!url) {
+          alert('Please select a website!');
+          return;
+        }
+
+        var base64credentials = btoa(username + ':' + password);
+
+        var formData = new FormData();
+        formData.append('file', file);
+        formData.append('title', 'Thumbnail'); // You can adjust the title as needed
+        formData.append('caption', 'Thumbnail caption'); // You can adjust the caption as needed
+        showLoader();
+        $.ajax({
+          url: url + '/wp-json/wp/v2/media',
+          method: 'POST',
+          processData: false,
+          contentType: false,
+          beforeSend: function (xhr) {
+            xhr.setRequestHeader('Authorization', 'Basic ' + base64credentials);
+          },
+          data: formData,
+          success: function (response) {
+            console.log('Media created successfully:', response);
+            // Extract the ID from the response
+            var mediaId = response.id;
+            // Set the ID to the hidden input field
+            $('#featured_id').val(mediaId);
+            alert('Media created successfully!');
+          },
+          error: function (xhr, status, error) {
+            console.error('Error creating media:', error);
+            if (xhr.status === 401) {
+              alert('Invalid authentication token!');
+            } else {
+              alert('Error creating media!');
+            }
+          },
+          complete: function () {
+            hideLoader(); // Your function to hide the loading indicator
+          }
+        });
+      }
+
+
+      $('#setThumbnail').click(function () {
+        setThumbnail();
+      });
+      function validateAndGenerate() {
+        var title = $('#postTitle').val();
+        var description = $('#postDescription').val();
+        var maxWords = $('#maxWords').val();
+
+        if (title.trim() === '' || description.trim() === '' || maxWords.trim() === '') {
+          alert('Please fill in all fields.');
+          return;
+        }
+
+        var prompt = `Write a comprehensive blog post titled "${title}" focusing on ${description}. The article should aim to provide valuable insights, practical tips, and actionable advice related to ${description}. Please ensure that the content is well-structured with clear headings, subheadings, and bullet points where applicable. Incorporate relevant keywords naturally throughout the article to improve search engine visibility and optimize for SEO. Additionally, include high-quality images, infographics, or multimedia elements to enhance reader engagement. The goal is to create informative and authoritative content that addresses the needs and interests of the target audience while adhering to best practices for search engine optimization. Please limit the article to approximately ${maxWords} words.\n\n###`;
+        var averageTokenToWordRatio = 1.75; // Adjust based on your content type and language
+        var bufferMultiplier = 1.25; // Adjust based on desired flexibility
+
+        // Calculate the maximum token count with a buffer
+        var maxTokens = Math.ceil(maxWords * averageTokenToWordRatio * bufferMultiplier);
+        showLoader();
+        $.ajax({
+          url: 'https://api.openai.com/v1/chat/completions',
+          type: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer '+openai_key
+          },
+          data: JSON.stringify({
+            "model": "gpt-3.5-turbo-0125",
+            "messages": [
+              {
+                "role": "user",
+                "content": prompt
+              }
+            ],
+            "temperature": 1,
+            "max_tokens": maxTokens,
+            "top_p": 1,
+            "frequency_penalty": 0,
+            "presence_penalty": 0
+          }),
+          success: function (response) {
+            console.log(response);
+            var text = response.choices[0].message.content;
+            html = converter.makeHtml(text);
+            $('#summernote').summernote('code', html);
+            // Process the response data here
+          },
+          error: function (xhr, status, error) {
+            console.error('Error:', error);
+            alert('Failed to generate completion. Please try again later.');
+          },
+          complete: function () {
+            // Hide loader animation after AJAX call is complete
+            hideLoader();
+          }
+        });
+
+      }
+
+      function setThumbnail(post_id, thumbnail_id) {
+        // Set the thumbnail for the post
+        $.ajax({
+          method: 'POST',
+          url: $('#url').val() + '/wp-json/wp/v2/posts/' + post_id,
+          data: {
+            "featured_media": thumbnail_id,
+            "post_meta": [
+              {
+                "key": "_thumbnail_id",
+                "value": thumbnail_id
+              }]
+            // _thumbnail_id: thumbnail_id
+          },
+          success: function (response) {
+            console.log('Thumbnail set successfully!');
+          },
+          error: function (error) {
+            console.log('Error setting thumbnail: ' + error);
+          }
+        });
+      }
+      $('#summernote').summernote();
+
+      function updateCredentials(website) {
+
+
+        // Update username and password based on the selected website
+        var selectedCredentials = credentials[website];
+        if (selectedCredentials) {
+          $('#username').val(selectedCredentials.username);
+          $('#password').val(selectedCredentials.password);
+          $('#url').val(selectedCredentials.url);
+        } else {
+          alert('no credentials');
+          // Handle case when credentials are not available
+        }
+      }
+      function generateSlug(title) {
+        // Convert title to lowercase
+        var slug = title.toLowerCase();
+
+        // Remove unwanted characters
+        slug = slug.replace(/[^\w\s-]/g, '');
+
+        // Replace white spaces with dashes
+        slug = slug.replace(/\s+/g, '-');
+
+        // Remove leading and trailing dashes
+        slug = slug.replace(/^-+|-+$/g, '');
+
+        return slug;
+      }
+
+      $('#postForm').submit(function (event) {
+        event.preventDefault(); // Prevent default form submission
+
+        var title = $('#postTitle').val().trim();
+        var description = $('#postDescription').val().trim(); // Include description if needed
+        var content = $('#summernote').summernote('code').trim(); // Ensure Summernote is initialized
+        var website = $('#websiteSelect').val();
+        var thumbnail_id = $('#featured_id').val();
+        var isYoast = $('#is_yoast').val(); // Get the value of the is_yoast dropdown
+        var status = $('#post_status').val();
+        if (title === '' || content === '' || website < 1 || thumbnail_id < 1) {
+          alert('Please fill in all required fields.');
+          return;
+        }
+
+        var postData = {
+          title: title,
+          content: content,
+          featured_media: thumbnail_id,
+          post_meta: [
+            {
+              "key": "_thumbnail_id",
+              "value": thumbnail_id
+            }],
+          // Add other post fields (excerpt, categories, etc.) as needed
+          status: staus, // Set post status to "publish" by default
+          slug: generateSlug(title)
+        };
+
+        var meta = {
+          seo_title: title,
+          seo_description: description,
+          // Add other meta fields as needed
+        };
+
+        postData.meta = meta; // Add meta data to the postData object
+
+        // Conditionally include Yoast SEO meta data based on the selection
+        if (isYoast === '2') {
+          var yoast_Seo = {
+            "yoast_wpseo_title": title,
+            "yoast_wpseo_metadesc": description,
+            "og:title": title,
+            "og:description": description,
+            // Add other Yoast SEO meta fields as needed
+          };
+          postData.yoast_meta = yoast_Seo;
+        }
+
+        showLoader(); // Your function to display a loading indicator
+
+        $.ajax({
+          url: $('#url').val() + '/wp-json/wp/v2/posts', // Ensure correct endpoint URL
+          type: 'POST',
+          beforeSend: function (xhr) {
+
+            // Ensure a valid token with "create_posts" permission
+            var username = $('#username').val(); // Get the value of the username input field
+            var password = $('#password').val(); // Get the value of the password input field
+
+            var token = username + ':' + password; // Concatenate username and password with a colon
+
+            xhr.setRequestHeader('Authorization', 'Basic ' + btoa(token)); // Set the Authorization header
+
+            xhr.setRequestHeader('Content-Type', 'application/json');
+          },
+          data: JSON.stringify(postData),
+          success: function (response) {
+            console.log('Post created successfully:', response);
+            alert('Post created successfully!');
+          },
+          error: function (xhr, status, error) {
+            console.error('Error creating post:', error);
+            // Handle specific errors (e.g., 401 for unauthorized)
+            if (xhr.status === 401) {
+              alert('Invalid authentication token!');
+            } else {
+              alert('Error creating post!');
+            }
+          },
+          complete: function () {
+            hideLoader(); // Your function to hide the loading indicator
+          }
+        });
+      });
+    });
+
+
+
+  </script>
+</body>
+
+</html>
